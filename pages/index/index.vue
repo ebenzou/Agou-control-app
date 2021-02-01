@@ -101,16 +101,12 @@
 						</view>
 					</view>
 					<view class="cu-form-group justify-center">
-						<button class="cu-btn sm bg-green">先点这里打开直播界面</button>
+						<button class="cu-btn sm bg-green" @tap="liveCommand('live_mode','直播模式')">先点这里打开直播界面</button>
 					</view>
 					<view class="cu-form-group ">
 						<!-- <view class="title">邮件</view> -->
-						<input placeholder="直播间分享代码" name="input"></input>
-						<button class='cu-btn sm bg-green shadow'>链接进直播间</button>
-					</view>
-					<view class="cu-form-group ">
-						<input placeholder="抖音号" name="input"></input>
-						<button class='cu-btn sm bg-green shadow'>搜索进直播间</button>
+						<input placeholder="直播间分享代码" v-model="douyin_str"></input>
+						<button class='cu-btn sm bg-green shadow' @tap="enterLiveroom">链接进直播间</button>
 					</view>
 					<view class="cu-form-group ">
 						<input placeholder="11|22|33" name="input"></input>
@@ -323,6 +319,7 @@
 				isLogin: uni.getStorageSync('isLogin'),
 				isConnect: uni.getStorageSync('isConnect'),
 				d_num: "为设备命名",
+				douyin_str: "",
 				d_value: null,
 				deviceList: [],
 				glist: [],
@@ -417,6 +414,8 @@
 					let msg = JSON.parse(res.data)
 					let wsid = msg.ws_id;
 					let stat = msg.stat;
+					let mode = msg.mode;
+					let mand = msg.mand;
 					let device_num = msg.client_id;
 					let items = that.glist.list;
 					switch (msg.type) {
@@ -454,8 +453,40 @@
 							for (let i = 0, lenI = items.length; i < lenI; ++i) {
 								if (items[i].device_num == device_num) {
 									// items[i].device_stat = 'offline';
-									that.glist.list[i].doing = msg.text;
-									break
+									switch (mand){
+										case 'enter_homepageliveroom':
+											that.glist.list[i].doing = msg.text?msg.text:"进入直播间失败";
+											break;
+										case 'start':
+											that.glist.list[i].doing = msg.text;
+											break;
+										case 'online':
+											switch (mode){
+												case 'zb':
+													that.glist.list[i].doing = "直播模式ing...";
+													break;
+												case 'yh':
+													that.glist.list[i].doing = "养号模式ing...";
+													break;
+												case 'fd':
+													that.glist.list[i].doing = "福袋模式ing...";
+													break;
+												default:
+													that.glist.list[i].doing = msg.text;
+													break;
+											}
+											break;
+										case 'stop':
+											that.glist.list[i].doing = msg.text;
+											break;
+										case 'zb':
+											that.glist.list[i].doing = msg.text;
+											break;
+										default:
+											that.glist.list[i].doing = msg.text;
+											break;
+									}
+									
 								}
 							}
 							return;
@@ -699,6 +730,15 @@
 					this.glist.list[i].checked = false;
 				}
 				this.hideModal();
+			},
+			liveCommand(e,t) {
+				let devices = [];
+				this.glist.list.forEach(function(e,i){
+					if (e.checked) {
+						devices = devices.concat(e)
+					}
+				});
+				this.sendCommand(e,t)
 			},
 			ctlCmd(e) {
 				let _this = this;
@@ -956,10 +996,10 @@
 							console.log('update', res)
 							if (res.data.code == '200') {
 								console.log('更新成功',res.data.data)
-								uni.showToast({
-									title: res.data.msg,
-									icon:"none"
-								});
+								// uni.showToast({
+								// 	title: res.data.msg,
+								// 	icon:"none"
+								// });
 							} else {
 								console.log('更新失败',res.data.msg)
 								uni.showToast({
@@ -1002,6 +1042,41 @@
 						console.log(err)
 					},
 				});
+			},
+			enterLiveroom: function() {
+				// console.log(this.douyin_str);
+				let url = this.findUrl(this.douyin_str);
+				// console.log(url);
+				uni.request({
+					url: this.API_URL + 'get/ownerUserId?url=' + url,
+					method: 'GET',
+					success: res => {
+						if (res.statusCode !== 200) {
+							console.log("请求失败",res)
+						} else {
+							console.log(res)
+							this.sendCommand("enter_homepageliveroom","snssdk1128://user/detail/"+res.data)
+							// uni.showToast({
+							// 	title: res.data.toString(),
+							// 	icon: "none"
+							// });
+						}
+					},
+					fail: (err) => {console.log(err)}
+				});
+			},
+			findUrl: function (s) {
+        var reg = /(http:\/\/|https:\/\/)((\w|=|\?|\.|\/|&|-)+)/g;
+        //var reg = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+        //var reg=/(http(s)?\:\/\/)?(www\.)?(\w+\:\d+)?(\/\w+)+\.(swf|gif|jpg|bmp|jpeg)/gi;
+        //var reg=/(http(s)?\:\/\/)?(www\.)?(\w+\:\d+)?(\/\w+)+\.(swf|gif|jpg|bmp|jpeg)/gi;
+        var reg= /(https?|http|ftp|file):\/\/[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]/g;
+        //var reg= /^((ht|f)tps?):\/\/[\w\-]+(\.[\w\-]+)+([\w\-\.,@?^=%&:\/~\+#]*[\w\-\@?^=%&\/~\+#])?$/;
+        //v = v.replace(reg, "<a href='$1$2'>$1$2</a>"); //这里的reg就是上面的正则表达式
+        //s = s.replace(reg, "$1$2"); //这里的reg就是上面的正则表达式
+        s = s.match(reg);
+        // console.log(s)
+        return(s)
 			},
 			changeSocket: function() {
 				if (this.isConnect) {

@@ -449,10 +449,6 @@ __webpack_require__.r(__webpack_exports__);
 //
 //
 //
-//
-//
-//
-//
 var _default =
 {
   data: function data() {
@@ -460,6 +456,7 @@ var _default =
       isLogin: uni.getStorageSync('isLogin'),
       isConnect: uni.getStorageSync('isConnect'),
       d_num: "为设备命名",
+      douyin_str: "",
       d_value: null,
       deviceList: [],
       glist: [],
@@ -554,6 +551,8 @@ var _default =
         var msg = JSON.parse(res.data);
         var wsid = msg.ws_id;
         var stat = msg.stat;
+        var mode = msg.mode;
+        var mand = msg.mand;
         var device_num = msg.client_id;
         var items = that.glist.list;
         switch (msg.type) {
@@ -591,8 +590,40 @@ var _default =
             for (var _i = 0, _lenI = items.length; _i < _lenI; ++_i) {
               if (items[_i].device_num == device_num) {
                 // items[i].device_stat = 'offline';
-                that.glist.list[_i].doing = msg.text;
-                break;
+                switch (mand) {
+                  case 'enter_homepageliveroom':
+                    that.glist.list[_i].doing = msg.text ? msg.text : "进入直播间失败";
+                    break;
+                  case 'start':
+                    that.glist.list[_i].doing = msg.text;
+                    break;
+                  case 'online':
+                    switch (mode) {
+                      case 'zb':
+                        that.glist.list[_i].doing = "直播模式ing...";
+                        break;
+                      case 'yh':
+                        that.glist.list[_i].doing = "养号模式ing...";
+                        break;
+                      case 'fd':
+                        that.glist.list[_i].doing = "福袋模式ing...";
+                        break;
+                      default:
+                        that.glist.list[_i].doing = msg.text;
+                        break;}
+
+                    break;
+                  case 'stop':
+                    that.glist.list[_i].doing = msg.text;
+                    break;
+                  case 'zb':
+                    that.glist.list[_i].doing = msg.text;
+                    break;
+                  default:
+                    that.glist.list[_i].doing = msg.text;
+                    break;}
+
+
               }
             }
             return;
@@ -836,6 +867,15 @@ var _default =
         this.glist.list[i].checked = false;
       }
       this.hideModal();
+    },
+    liveCommand: function liveCommand(e, t) {
+      var devices = [];
+      this.glist.list.forEach(function (e, i) {
+        if (e.checked) {
+          devices = devices.concat(e);
+        }
+      });
+      this.sendCommand(e, t);
     },
     ctlCmd: function ctlCmd(e) {
       var _this = this;
@@ -1093,10 +1133,10 @@ var _default =
             console.log('update', res);
             if (res.data.code == '200') {
               console.log('更新成功', res.data.data);
-              uni.showToast({
-                title: res.data.msg,
-                icon: "none" });
-
+              // uni.showToast({
+              // 	title: res.data.msg,
+              // 	icon:"none"
+              // });
             } else {
               console.log('更新失败', res.data.msg);
               uni.showToast({
@@ -1139,6 +1179,41 @@ var _default =
           console.log(err);
         } });
 
+    },
+    enterLiveroom: function enterLiveroom() {var _this5 = this;
+      // console.log(this.douyin_str);
+      var url = this.findUrl(this.douyin_str);
+      // console.log(url);
+      uni.request({
+        url: this.API_URL + 'get/ownerUserId?url=' + url,
+        method: 'GET',
+        success: function success(res) {
+          if (res.statusCode !== 200) {
+            console.log("请求失败", res);
+          } else {
+            console.log(res);
+            _this5.sendCommand("enter_homepageliveroom", "snssdk1128://user/detail/" + res.data);
+            // uni.showToast({
+            // 	title: res.data.toString(),
+            // 	icon: "none"
+            // });
+          }
+        },
+        fail: function fail(err) {console.log(err);} });
+
+    },
+    findUrl: function findUrl(s) {
+      var reg = /(http:\/\/|https:\/\/)((\w|=|\?|\.|\/|&|-)+)/g;
+      //var reg = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+      //var reg=/(http(s)?\:\/\/)?(www\.)?(\w+\:\d+)?(\/\w+)+\.(swf|gif|jpg|bmp|jpeg)/gi;
+      //var reg=/(http(s)?\:\/\/)?(www\.)?(\w+\:\d+)?(\/\w+)+\.(swf|gif|jpg|bmp|jpeg)/gi;
+      var reg = /(https?|http|ftp|file):\/\/[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]/g;
+      //var reg= /^((ht|f)tps?):\/\/[\w\-]+(\.[\w\-]+)+([\w\-\.,@?^=%&:\/~\+#]*[\w\-\@?^=%&\/~\+#])?$/;
+      //v = v.replace(reg, "<a href='$1$2'>$1$2</a>"); //这里的reg就是上面的正则表达式
+      //s = s.replace(reg, "$1$2"); //这里的reg就是上面的正则表达式
+      s = s.match(reg);
+      // console.log(s)
+      return s;
     },
     changeSocket: function changeSocket() {
       if (this.isConnect) {
